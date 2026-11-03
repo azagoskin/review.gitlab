@@ -4,16 +4,30 @@
 списка, просмотреть дифф (слева — целевая сторона MR, справа — ваша source-ветка),
 расставить inline-замечания и одной командой выгрузить их как discussions в MR.
 
-Весь цикл внутри одной команды `:CodeReview`:
+Рабочий цикл разделён на онлайн-синхронизацию и офлайн-ревью:
 
-1. `:CodeReview` — окно со списком открытых MR (через `glab`).
-2. Выбираете MR — открывается дифф (визуализация на [codediff.nvim](https://github.com/esmuellert/codediff.nvim)).
+1. `:CodeReview pull` (**онлайн**) — синхронизирует локальный кэш MR: добавляет/
+   обновляет открытые, переносит слитые и закрытые в архив (см. ниже).
+2. `:CodeReview` / `:CodeReview branch` (**офлайн**) — окно выбора ветки/MR из
+   кэша; открывается дифф (визуализация на [codediff.nvim](https://github.com/esmuellert/codediff.nvim)).
 3. Ставите замечания (`i` в readonly-режиме / `<localleader>cc`) — простое текстовое окно.
 4. `:CodeReview upload` (или `u`) — публикация в MR; успешно загруженные замечания
    отмечаются локально (✓) и при повторной загрузке пропускаются.
+   `:CodeReview approve` (или `A`) — апрув MR.
 
-Замечания хранятся локально в `stdpath("data")/review/<repo>/<branch>/comments.json`,
-привязаны к точным SHA ревизий MR, и несут скрытый маркер — повторная загрузка
+### Локальный кэш MR
+
+```
+stdpath("data")/review/<project>/
+  active/<branch>/{mr.json, comments.json}      # открытые MR
+  merged/<branch>/…                             # слитые (архив)
+  cancelled/<branch>/…                          # закрытые без merge (архив)
+```
+
+`<project>` — имя каталога репозитория, `<branch>` — source-ветка MR. `pull`
+тянет **только метаданные** (`mr.json` с `diff_refs`); сами коммиты подтягивайте
+через `git fetch` — тогда `:CodeReview branch` открывает дифф полностью офлайн.
+Замечания привязаны к SHA ревизий MR и несут скрытый маркер — повторная загрузка
 не дублирует.
 
 ## Требования
@@ -55,10 +69,13 @@ require("review-gitlab").setup({
 ## Использование
 
 ```
-:CodeReview              " открыть список открытых MR и выбрать нужный
+:CodeReview              " офлайн: выбрать ветку/MR из кэша и открыть дифф
+:CodeReview pull         " онлайн: синхронизировать кэш MR (active/merged/cancelled)
+:CodeReview branch       " то же, что :CodeReview без аргументов
 :CodeReview upload       " выгрузить замечания в выбранный MR
 :CodeReview upload 42    " выгрузить в MR !42 (явный IID)
 :CodeReview check        " предпросмотр: что будет выгружено, ничего не постит
+:CodeReview approve      " поставить апрув на выбранный MR (или approve 42)
 :CodeReview note         " добавить замечание на строке (или :'<,'>CodeReview note на диапазон)
 :CodeReview edit         " редактировать замечание под курсором
 :CodeReview delete       " удалить замечание под курсором
@@ -83,11 +100,12 @@ require("review-gitlab").setup({
 ### Куда писать
 
 ```
-<data>/review/<repo>/<branch>/comments.json
+<data>/review/<repo>/active/<branch>/comments.json
 ```
 
 - `<data>` — `stdpath("data")`, обычно `~/.local/share/nvim`.
 - `<repo>` — имя каталога git-репозитория (`basename` от `git rev-parse --show-toplevel`).
+- `active/` — состояние MR (открытый). Слитые/закрытые лежат в `merged/`/`cancelled/`.
 - `<branch>` — **source-ветка MR** (та, что ревьюим), с заменой небезопасных для
   имени файла символов на `_` (регэксп `[^%w%-_]` → `_`). Например ветка
   `feature/auth` → каталог `feature_auth`.

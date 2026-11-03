@@ -1,47 +1,15 @@
 local M = {}
 
-local glab = require("review-gitlab.glab")
-local utils = require("review-gitlab.utils")
+local storage = require("review-gitlab.storage")
 local log = require("review-gitlab.log")
 
 local function notify(msg, level)
   vim.notify(msg, level or vim.log.levels.INFO, { title = "review.gitlab" })
 end
 
----Нормализовать объект MR из ответа glab к тому, что нужно плагину.
----@param raw table
----@return table
-local function normalize(raw)
-  return {
-    iid = raw.iid,
-    title = raw.title,
-    source_branch = raw.source_branch,
-    target_branch = raw.target_branch,
-    web_url = raw.web_url,
-    author = raw.author and raw.author.username or nil,
-    diff_refs = raw.diff_refs, -- присутствует в ответе одного MR, не в списке
-  }
-end
-
----Запросить у GitLab подробности MR (ради diff_refs) и открыть дифф.
----@param client GlabClient
----@param mr table
-local function open_selected(client, mr)
-  client.get("projects/:id/merge_requests/" .. mr.iid, function(res)
-    if not res.ok or not res.body or not res.body.diff_refs then
-      return notify("Не удалось получить MR !" .. mr.iid .. ": " .. vim.trim(res.stderr or "нет diff_refs"), vim.log.levels.ERROR)
-    end
-    local full = normalize(res.body)
-    full.selected_at = os.time()
-    log.write(("mr selected: iid=%s %s -> %s"):format(tostring(full.iid), tostring(full.source_branch), tostring(full.target_branch)))
-    require("review-gitlab").open_mr(full)
-  end)
-end
-
----Построить плавающее окно со списком MR; на <CR> — выбрать.
----@param client GlabClient
----@param mrs table[]
-local function show_picker(client, mrs)
+---Плавающее окно со списком активных MR (из локального кэша); на <CR> — открыть.
+---@param mrs table[] нормализованные MR (из storage.list_state)
+local function show_picker(mrs)
   local lines = {}
   local width = 0
   for _, mr in ipairs(mrs) do
@@ -67,7 +35,7 @@ local function show_picker(client, mrs)
     col = math.floor((vim.o.columns - width) / 2),
     style = "minimal",
     border = "rounded",
-    title = " Открытые MR (CR — выбрать, q — закрыть) ",
+    title = " Активные MR (CR — выбрать, q — закрыть) ",
     title_pos = "center",
   })
   vim.wo[win].cursorline = true
@@ -83,7 +51,8 @@ local function show_picker(client, mrs)
     local mr = mrs[row]
     close()
     if mr then
-      open_selected(client, mr)
+      log.write(("mr picked: iid=%s %s"):format(tostring(mr.iid), tostring(mr.source_branch)))
+      require("review-gitlab").open_mr(mr)
     end
   end
 
@@ -93,33 +62,21 @@ local function show_picker(client, mrs)
   vim.keymap.set("n", "<Esc>", close, opts)
 end
 
----Точка входа: получить открытые MR и показать список.
-function M.open()
-  local root = utils.git_root()
-  if not root then
-    return notify("Не git-репозиторий", vim.log.levels.ERROR)
+---Офлайн: показать активные MR из локального кэша (active/). Сети не требует.
+function M.pick_branch()
+  local entries = storage.list_state("active")
+  if #entries == 0 then
+    return notify("Нет активных MR в кэше. Сначала выполните :CodeReview pull", vim.log.levels.WARN)
   end
-  local client = glab.new(root)
-  log.write("mr.open: fetching open merge requests")
-  client.paginate("projects/:id/merge_requests?state=opened&per_page=100", function(res)
-    if not res.ok or type(res.body) ~= "table" then
-      return notify("Не удалось получить список MR: " .. vim.trim(res.stderr or ""), vim.log.levels.ERROR)
-    end
-    local mrs = {}
-    for _, raw in ipairs(res.body) do
-      if type(raw) == "table" and raw.iid then
-        table.insert(mrs, normalize(raw))
-      end
-    end
-    log.write(("mr.open: %d open MR(s)"):format(#mrs))
-    if #mrs == 0 then
-      return notify("Нет открытых MR", vim.log.levels.WARN)
-    end
-    table.sort(mrs, function(a, b)
-      return (a.iid or 0) > (b.iid or 0)
-    end)
-    show_picker(client, mrs)
+  local mrs = {}
+  for _, e in ipairs(entries) do
+    mrs[#mrs + 1] = e.mr
+  end
+  table.sort(mrs, function(a, b)
+    return (a.iid or 0) > (b.iid or 0)
   end)
+  log.write(("mr.pick_branch: %d активных MR в кэше"):format(#mrs))
+  show_picker(mrs)
 end
 
 return M

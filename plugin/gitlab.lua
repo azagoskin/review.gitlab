@@ -4,6 +4,14 @@ end
 vim.g.loaded_review_gitlab = true
 
 local subcommands = {
+  pull = {
+    fn = function() require("review-gitlab").pull() end,
+    desc = "Онлайн: синхронизировать локальный кэш MR (active/merged/cancelled)",
+  },
+  branch = {
+    fn = function() require("review-gitlab").branch() end,
+    desc = "Офлайн: выбрать ветку/MR из кэша и открыть дифф",
+  },
   upload = {
     fn = function(args) require("review-gitlab").upload(args) end,
     desc = "Загрузить замечания в MR (опц.: IID)",

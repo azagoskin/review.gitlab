@@ -211,9 +211,20 @@ function M.open_mr(mr)
   open_codediff({ args = { left, right } })
 end
 
----Открыть окно выбора MR (точка входа команды :CodeReview без аргументов).
+---Открыть офлайн-окно выбора ветки/MR из локального кэша (:CodeReview / branch).
 function M.review()
-  require("review-gitlab.mr").open()
+  require("review-gitlab.mr").pick_branch()
+end
+
+---Псевдоним: :CodeReview branch.
+function M.branch()
+  require("review-gitlab.mr").pick_branch()
+end
+
+---Онлайн-синхронизация локального кэша MR (:CodeReview pull).
+---@param client GlabClient?
+function M.pull(client)
+  require("review-gitlab.sync").pull(client)
 end
 
 ---Закрыть ревью: закрыть вкладку диффа и снять отрисовку (замечания сохраняются).

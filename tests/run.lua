@@ -53,12 +53,12 @@ do -- position helpers
   check(multi:find("5", 1, true) and multi:find("7", 1, true), "multi-line body carries the line range hint")
 end
 
-do -- storage: per-(repo, branch) directory
+do -- storage: active/<branch> directory
   local storage = require("review-gitlab.storage")
   local dir = storage.review_dir()
-  check(dir ~= nil and dir:find("/review/review%.gitlab/") ~= nil, "review_dir is stdpath(data)/review/<repo>/<branch>")
+  check(dir ~= nil and dir:find("/review/review%.gitlab/active/") ~= nil, "review_dir is stdpath(data)/review/<repo>/active/<branch>")
   local path = storage.get_storage_path()
-  check(path ~= nil and path:match("comments%.json$") ~= nil, "comments live in comments.json")
+  check(path ~= nil and path:match("active/.+/comments%.json$") ~= nil, "comments live in active/<branch>/comments.json")
 end
 
 do -- store.mark_uploaded (storage mocked so nothing touches disk)
