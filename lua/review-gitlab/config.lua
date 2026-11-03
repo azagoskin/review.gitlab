@@ -43,6 +43,7 @@ M.defaults = {
     -- Действия
     list_comments = "c",
     upload = "u",
+    approve = "A",
     clear_comments = "<C-r>",
     close = "q",
     toggle_readonly = "R",

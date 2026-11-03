@@ -12,6 +12,10 @@ local subcommands = {
     fn = function(args) require("review-gitlab").check(args) end,
     desc = "Предпросмотр: что будет загружено, без постинга",
   },
+  approve = {
+    fn = function(args) require("review-gitlab").approve(args) end,
+    desc = "Поставить апрув на выбранный MR (опц.: IID)",
+  },
   note = {
     fn = function(_, opts)
       local comments = require("review-gitlab.comments")

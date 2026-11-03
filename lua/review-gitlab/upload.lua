@@ -295,4 +295,40 @@ function M.upload(args, client)
   end)
 end
 
+---Поставить апрув на MR: POST .../merge_requests/<iid>/approve. IID — из
+---аргумента или из mr.json выбранного MR.
+---@param args string[]? аргументы команды (IID)
+---@param client GlabClient? инъекция транспорта (тесты)
+function M.approve(args, client)
+  local parsed = parse_args(args or {})
+  log.write("=== approve ===", "args=" .. vim.inspect(args) .. "  parsed=" .. vim.inspect(parsed))
+  if parsed.error then
+    return notify(parsed.error, vim.log.levels.ERROR)
+  end
+
+  local root = git_context(vim.fn.getcwd())
+  if not root then
+    return notify("Не git-репозиторий", vim.log.levels.ERROR)
+  end
+  client = client or glab.new(root)
+
+  local iid = parsed.iid
+  if not iid then
+    local mr = storage.load_mr()
+    iid = mr and mr.iid
+  end
+  if not iid then
+    return notify("Не выбран MR. Откройте его (:CodeReview) или укажите IID: :CodeReview approve <iid>", vim.log.levels.ERROR)
+  end
+
+  local endpoint = "projects/:id/merge_requests/" .. iid .. "/approve"
+  client.post(endpoint, vim.empty_dict(), function(res)
+    if res.ok then
+      notify("MR !" .. iid .. " заапрувлен", vim.log.levels.INFO)
+    else
+      notify("Не удалось заапрувить MR !" .. iid .. ": " .. vim.trim(res.stderr or "запрос не удался"), vim.log.levels.ERROR)
+    end
+  end)
+end
+
 return M

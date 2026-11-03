@@ -100,13 +100,47 @@ function M.mr_path()
   return dir and (dir .. "/mr.json")
 end
 
+local is_list = vim.islist or vim.tbl_islist
+
+---Отформатированный (с отступами) JSON. Скаляры кодируем через vim.json.encode
+---ради корректного экранирования; таблицы разворачиваем сами. Ключи объектов
+---сортируем для стабильного вывода.
+---@param value any
+---@param indent number
+---@return string
+local function pretty(value, indent)
+  if type(value) ~= "table" then
+    return vim.json.encode(value)
+  end
+  if vim.tbl_isempty(value) then
+    return is_list(value) and "[]" or "{}"
+  end
+  local pad, pad2 = string.rep("  ", indent), string.rep("  ", indent + 1)
+  local parts = {}
+  if is_list(value) then
+    for _, v in ipairs(value) do
+      parts[#parts + 1] = pad2 .. pretty(v, indent + 1)
+    end
+    return "[\n" .. table.concat(parts, ",\n") .. "\n" .. pad .. "]"
+  end
+  local keys = {}
+  for k in pairs(value) do
+    keys[#keys + 1] = k
+  end
+  table.sort(keys)
+  for _, k in ipairs(keys) do
+    parts[#parts + 1] = pad2 .. vim.json.encode(tostring(k)) .. ": " .. pretty(value[k], indent + 1)
+  end
+  return "{\n" .. table.concat(parts, ",\n") .. "\n" .. pad .. "}"
+end
+
 ---@param path string
 ---@param data table
 local function write_json(path, data)
   pcall(vim.fn.mkdir, vim.fn.fnamemodify(path, ":h"), "p")
   local file = io.open(path, "w")
   if file then
-    file:write(vim.fn.json_encode(data))
+    file:write(pretty(data, 0) .. "\n")
     file:close()
   end
 end

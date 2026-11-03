@@ -273,6 +273,13 @@ function M.check(args, client)
   require("review-gitlab.upload").upload({ "--dry-run", unpack(args or {}) }, client)
 end
 
+---Поставить апрув на выбранный MR.
+---@param args string[]?
+---@param client GlabClient?
+function M.approve(args, client)
+  require("review-gitlab.upload").approve(args or {}, client)
+end
+
 ---Открыть файл лога в сплите (:CodeReview log). `clear` — очистить лог.
 ---@param sub? string
 function M.log(sub)
