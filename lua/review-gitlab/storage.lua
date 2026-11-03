@@ -25,19 +25,67 @@ local function safe_branch(branch)
   return (branch:gsub("[^%w%-_]", "_"))
 end
 
----The per-(repo, branch) directory comments and MR metadata live in:
----`stdpath("data")/review/<repo>/<branch>/`. nil outside a git repo or when
----the branch cannot be determined (detached HEAD).
+---@param root string
+---@return string каталог репозитория: stdpath(data)/review/<repo>
+local function repo_dir(root)
+  return string.format("%s/%s", data_dir, vim.fn.fnamemodify(root, ":t"))
+end
+
+---@param root string
+---@return string путь указателя активной ветки ревью
+local function active_pointer(root)
+  return repo_dir(root) .. "/.active"
+end
+
+---Ветка, против которой идёт ревью (source-ветка MR) — ключ каталога хранения,
+---а НЕ текущий git HEAD (можно ревьюить, находясь на другой ветке).
+---@type string|nil
+local active_branch = nil
+
+---@param root string
+---@return string|nil
+local function read_active(root)
+  local f = io.open(active_pointer(root), "r")
+  if not f then
+    return nil
+  end
+  local b = f:read("*a")
+  f:close()
+  b = b and vim.trim(b)
+  return (b and b ~= "") and b or nil
+end
+
+---Задать активную ветку ревью (вызывается при открытии MR). Сохраняется в
+---указатель, чтобы `:CodeReview upload` в следующей сессии нашёл те же замечания.
+---@param branch string|nil
+function M.set_active_branch(branch)
+  active_branch = branch
+  local root = get_git_root()
+  if root and branch then
+    pcall(vim.fn.mkdir, repo_dir(root), "p")
+    local f = io.open(active_pointer(root), "w")
+    if f then
+      f:write(branch)
+      f:close()
+    end
+  end
+  log.write("storage.set_active_branch: " .. tostring(branch))
+end
+
+---Каталог замечаний и метаданных MR: `stdpath(data)/review/<repo>/<branch>/`,
+---где <branch> — активная ветка ревью (или указатель, или git HEAD как запасной).
+---nil вне git-репозитория или когда ветку определить нельзя.
 ---@return string|nil
 function M.review_dir()
   local root = get_git_root()
-  local branch = M.git_branch()
-  if not root or not branch then
+  if not root then
     return nil
   end
-  local repo = vim.fn.fnamemodify(root, ":t")
-  local dir = string.format("%s/%s/%s", data_dir, repo, safe_branch(branch))
-  return dir
+  local branch = active_branch or read_active(root) or M.git_branch()
+  if not branch then
+    return nil
+  end
+  return string.format("%s/%s", repo_dir(root), safe_branch(branch))
 end
 
 ---@return string|nil
@@ -110,7 +158,7 @@ function M.clear()
 end
 
 ---Persist the selected MR's metadata (iid, diff_refs, branches) so a later
----`:Review upload` knows which MR to post to without asking again.
+---`:CodeReview upload` knows which MR to post to without asking again.
 ---@param mr table
 function M.save_mr(mr)
   local path = M.mr_path()

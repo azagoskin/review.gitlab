@@ -4,12 +4,12 @@
 списка, просмотреть дифф (слева — целевая сторона MR, справа — ваша source-ветка),
 расставить inline-замечания и одной командой выгрузить их как discussions в MR.
 
-Весь цикл внутри одной команды `:Review`:
+Весь цикл внутри одной команды `:CodeReview`:
 
-1. `:Review` — окно со списком открытых MR (через `glab`).
+1. `:CodeReview` — окно со списком открытых MR (через `glab`).
 2. Выбираете MR — открывается дифф (визуализация на [codediff.nvim](https://github.com/esmuellert/codediff.nvim)).
 3. Ставите замечания (`i` в readonly-режиме / `<localleader>cc`) — простое текстовое окно.
-4. `:Review upload` (или `u`) — публикация в MR; успешно загруженные замечания
+4. `:CodeReview upload` (или `u`) — публикация в MR; успешно загруженные замечания
    отмечаются локально (✓) и при повторной загрузке пропускаются.
 
 Замечания хранятся локально в `stdpath("data")/review/<repo>/<branch>/comments.json`,
@@ -55,23 +55,23 @@ require("review-gitlab").setup({
 ## Использование
 
 ```
-:Review              " открыть список открытых MR и выбрать нужный
-:Review upload       " выгрузить замечания в выбранный MR
-:Review upload 42    " выгрузить в MR !42 (явный IID)
-:Review check        " предпросмотр: что будет выгружено, ничего не постит
-:Review note         " добавить замечание на строке (или :'<,'>Review note на диапазон)
-:Review edit         " редактировать замечание под курсором
-:Review delete       " удалить замечание под курсором
-:Review list         " список всех замечаний
-:Review close        " закрыть ревью (замечания сохраняются)
-:Review clear        " удалить все замечания текущей ветки
-:Review log          " открыть лог (:Review log clear — очистить)
+:CodeReview              " открыть список открытых MR и выбрать нужный
+:CodeReview upload       " выгрузить замечания в выбранный MR
+:CodeReview upload 42    " выгрузить в MR !42 (явный IID)
+:CodeReview check        " предпросмотр: что будет выгружено, ничего не постит
+:CodeReview note         " добавить замечание на строке (или :'<,'>CodeReview note на диапазон)
+:CodeReview edit         " редактировать замечание под курсором
+:CodeReview delete       " удалить замечание под курсором
+:CodeReview list         " список всех замечаний
+:CodeReview close        " закрыть ревью (замечания сохраняются)
+:CodeReview clear        " удалить все замечания текущей ветки
+:CodeReview log          " открыть лог (:CodeReview log clear — очистить)
 ```
 
 Какой MR выгружать, плагин запоминает при выборе (`mr.json` рядом с замечаниями),
-так что `:Review upload` без аргументов идёт в тот же MR. Можно передать IID явно.
+так что `:CodeReview upload` без аргументов идёт в тот же MR. Можно передать IID явно.
 
-`:Review check` (и каждая реальная загрузка) открывает отчёт: что ушло inline,
+`:CodeReview check` (и каждая реальная загрузка) открывает отчёт: что ушло inline,
 что стало комментарием к файлу, что пропущено и почему.
 
 ## Как замечания ложатся в GitLab
@@ -108,7 +108,7 @@ added/removed/context строки — из диффа MR; это то, что G
 require("review-gitlab").setup({ log = true, log_level = "debug" })
 ```
 
-Лог: `stdpath("state")/review-gitlab.log` (открыть — `:Review log`). При проблеме
+Лог: `stdpath("state")/review-gitlab.log` (открыть — `:CodeReview log`). При проблеме
 воспроизведите её и приложите этот файл.
 
 ## Тесты

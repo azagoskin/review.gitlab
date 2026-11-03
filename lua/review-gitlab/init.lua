@@ -157,6 +157,14 @@ local function open_codediff(opts)
   vim.defer_fn(try_setup, 200)
 end
 
+---@param root string
+---@param sha string
+---@return boolean есть ли коммит локально
+local function have_commit(root, sha)
+  vim.fn.system({ "git", "-C", root, "cat-file", "-e", sha .. "^{commit}" })
+  return vim.v.shell_error == 0
+end
+
 ---Открыть дифф выбранного MR. Слева — левая ревизия MR (start_sha/base_sha,
 ---целевая сторона), справа — head_sha (source). Диапазон задаётся точными SHA
 ---из MR, чтобы inline-замечания гарантированно совпали с диффом GitLab.
@@ -170,15 +178,40 @@ function M.open_mr(mr)
     return
   end
 
-  storage.save_mr(mr)
   log.write(("open_mr iid=%s  %s...%s  (%s -> %s)"):format(
     tostring(mr.iid), left:sub(1, 8), right:sub(1, 8),
     tostring(mr.source_branch), tostring(mr.target_branch)))
 
+  -- Нужные коммиты должны быть в git. Плагин сам ничего не тянет.
+  local root = require("review-gitlab.utils").git_root()
+  if root then
+    local missing = {}
+    for _, sha in ipairs({ left, right }) do
+      if not have_commit(root, sha) then
+        missing[#missing + 1] = sha:sub(1, 12)
+      end
+    end
+    if #missing > 0 then
+      local fetch_hint = ("git fetch origin %s %s"):format(
+        tostring(mr.source_branch or ""), tostring(mr.target_branch or ""))
+      local msg = string.format(
+        "Коммиты MR !%s отсутствуют в git: %s. Выполните: %s",
+        tostring(mr.iid), table.concat(missing, ", "), vim.trim(fetch_hint))
+      log.write("open_mr: " .. msg)
+      vim.api.nvim_echo({ { msg, "ErrorMsg" } }, true, {})
+      return
+    end
+  end
+
+  -- Ревью привязано к source-ветке MR, а не к текущему HEAD.
+  storage.set_active_branch(mr.source_branch)
+  store.reset()
+  storage.save_mr(mr)
+
   open_codediff({ args = { left, right } })
 end
 
----Открыть окно выбора MR (точка входа команды :Review без аргументов).
+---Открыть окно выбора MR (точка входа команды :CodeReview без аргументов).
 function M.review()
   require("review-gitlab.mr").open()
 end
@@ -240,7 +273,7 @@ function M.check(args, client)
   require("review-gitlab.upload").upload({ "--dry-run", unpack(args or {}) }, client)
 end
 
----Открыть файл лога в сплите (:Review log). `clear` — очистить лог.
+---Открыть файл лога в сплите (:CodeReview log). `clear` — очистить лог.
 ---@param sub? string
 function M.log(sub)
   local path = log.path()

@@ -83,11 +83,12 @@ function M.open(initial_text, callback)
   vim.bo[text_popup.bufnr].filetype = "markdown"
   vim.cmd("startinsert")
 
+  -- <CR> НЕ привязываем к отправке: в insert-режиме это перенос строки.
+  -- Сохранение — только по popup_submit (<C-s>), отмена — <Esc>/popup_cancel.
   local km = cfg.keymaps
   if km.popup_submit then
     vim.keymap.set({ "i", "n" }, km.popup_submit, submit, { buffer = text_popup.bufnr, noremap = true })
   end
-  vim.keymap.set("n", "<CR>", submit, { buffer = text_popup.bufnr, noremap = true })
   vim.keymap.set("n", "<Esc>", close, { buffer = text_popup.bufnr, noremap = true })
   if km.popup_cancel then
     vim.keymap.set("n", km.popup_cancel, close, { buffer = text_popup.bufnr, noremap = true })

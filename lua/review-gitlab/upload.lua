@@ -49,7 +49,7 @@ function M.review_branch(comments)
     return nil, nil
   end
   if #names > 1 then
-    return nil, "замечания относятся к нескольким ревью-веткам (" .. table.concat(names, ", ") .. ") — укажите IID MR: :Review upload <iid>"
+    return nil, "замечания относятся к нескольким ревью-веткам (" .. table.concat(names, ", ") .. ") — укажите IID MR: :CodeReview upload <iid>"
   end
   return names[1], nil
 end
@@ -239,7 +239,7 @@ local function run(client, iid, comments, opts)
   end)
 end
 
----Entry point for `:Review upload`.
+---Entry point for `:CodeReview upload`.
 ---@param args string[] command arguments (MR IID, --dry-run)
 ---@param client GlabClient? injected transport (tests); a real glab client otherwise
 function M.upload(args, client)
@@ -268,7 +268,7 @@ function M.upload(args, client)
     return run(client, parsed.iid, comments, parsed)
   end
 
-  -- Приоритет: IID выбранного MR из mr.json (записан при :Review)
+  -- Приоритет: IID выбранного MR из mr.json (записан при :CodeReview)
   local mr = storage.load_mr()
   if mr and mr.iid then
     log.write("upload: IID из mr.json = " .. tostring(mr.iid))
@@ -284,12 +284,12 @@ function M.upload(args, client)
   local target = review or branch
   log.write(("target branch: %s (from %s)"):format(tostring(target), review and "comment head_ref" or "git HEAD"))
   if not target then
-    return notify("Нет review-ветки на замечаниях и detached HEAD: укажите IID (:Review upload <iid>)", vim.log.levels.ERROR)
+    return notify("Нет review-ветки на замечаниях и detached HEAD: укажите IID (:CodeReview upload <iid>)", vim.log.levels.ERROR)
   end
   local query = string.format("projects/:id/merge_requests?state=opened&source_branch=%s", vim.uri_encode(target))
   client.get(query, function(res)
     if not res.ok or type(res.body) ~= "table" or not res.body[1] then
-      return notify("Нет открытого MR для ветки '" .. target .. "'. Укажите IID: :Review upload <iid>", vim.log.levels.ERROR)
+      return notify("Нет открытого MR для ветки '" .. target .. "'. Укажите IID: :CodeReview upload <iid>", vim.log.levels.ERROR)
     end
     run(client, res.body[1].iid, comments, parsed)
   end)

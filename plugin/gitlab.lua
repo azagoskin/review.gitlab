@@ -21,7 +21,7 @@ local subcommands = {
         comments.add_at_cursor()
       end
     end,
-    desc = "Добавить замечание на строке (или :'<,'>Review note на диапазон)",
+    desc = "Добавить замечание на строке (или :'<,'>CodeReview note на диапазон)",
   },
   edit = { fn = function() require("review-gitlab.comments").edit_at_cursor() end, desc = "Редактировать замечание под курсором" },
   delete = { fn = function() require("review-gitlab.comments").delete_at_cursor() end, desc = "Удалить замечание под курсором" },
@@ -33,7 +33,7 @@ local subcommands = {
 
 local subcommand_names = vim.tbl_keys(subcommands)
 
-vim.api.nvim_create_user_command("Review", function(opts)
+vim.api.nvim_create_user_command("CodeReview", function(opts)
   local cmd = opts.fargs[1]
 
   -- Без подкоманды: открыть список MR
