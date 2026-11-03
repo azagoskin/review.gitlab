@@ -41,6 +41,8 @@ function M.open(initial_text, callback)
     },
     win_options = {
       winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      wrap = true,
+      linebreak = true,
     },
     buf_options = {
       modifiable = true,
